@@ -1,7 +1,7 @@
-# Bibop recipe for webkaos (CentOS 7+)
+# Bibop recipe for webkaos (EL8/EL9)
 # See more: https://kaos.sh/bibop
 
-pkg webkaos webkaos-debug webkaos-nginx webkaos-module-brotli webkaos-module-naxsi
+pkg webkaos webkaos-debug webkaos-nginx
 
 require-root yes
 unsafe-actions yes
@@ -11,15 +11,14 @@ var service_name webkaos
 var user_name webkaos
 var prefix_dir /etc/webkaos
 var config {prefix_dir}/webkaos.conf
+var extra_config_dir {prefix_dir}/xtra
 var binary /usr/sbin/webkaos
-var modules_config {prefix_dir}/modules.conf
-var modules_dir /usr/share/webkaos/modules
 var pid_file /var/run/webkaos.pid
 var ssl_dir {prefix_dir}/ssl
 var dh_param {ssl_dir}/dhparam.pem
 var log_dir /var/log/webkaos
 
-var lua_ver 2.1.0-beta3
+var lua_ver 2.1
 var lua_dir /usr/share/webkaos/luajit/share/luajit-{lua_ver}
 
 command "-" "System environment validation"
@@ -33,6 +32,14 @@ command "-" "System environment validation"
 command "-" "Debug version"
   exist {binary}.debug
   service-present webkaos-debug
+
+command "webkaos -v" "Check version info"
+  wait-output 1.0
+  output-match "webkaos version: webkaos\/\d\.\d+\.\d+"
+
+command "webkaos -t" "Validate default config"
+  exit 0
+  output-contains "webkaos: the configuration file /etc/webkaos/webkaos.conf syntax is ok"
 
 command "-" "Check linking with LuaJIT"
   lib-rpath {binary} /usr/share/webkaos/luajit/lib
@@ -113,7 +120,18 @@ command "-" "Check Resty core and lrucache"
   mode {lua_dir}/resty/core/worker.lua 644
   mode {lua_dir}/resty/lrucache/pureffi.lua 644
 
-command "-" "Nginx compatibility package"
+command "-" "Check extra configs"
+  exist {extra_config_dir}/bots.conf
+  exist {extra_config_dir}/common.conf
+  exist {extra_config_dir}/ssl.conf
+  exist {extra_config_dir}/ssl-wildcard.conf
+
+  mode {extra_config_dir}/bots.conf 644
+  mode {extra_config_dir}/common.conf 644
+  mode {extra_config_dir}/ssl.conf 644
+  mode {extra_config_dir}/ssl-wildcard.conf 644
+
+command "-" "Check Nginx compatibility package"
   exist /etc/nginx
   exist /var/log/nginx
   exist /etc/nginx/nginx.conf
@@ -121,12 +139,15 @@ command "-" "Nginx compatibility package"
   service-present nginx
   service-present nginx-debug
 
+command "nginx -v" "Check nginx wrapper version info"
+  wait-output 1.0
+  output-match "nginx version: nginx\/\d\.\d+\.\d+"
+
+command "nginx -t" "Validate default config using nginx wrapper"
+  exit 0
+
 command "-" "Original configuration backup"
   backup {config}
-  backup {modules_config}
-
-command "-" "Add modules configuration"
-  copy modules.conf {modules_config}
 
 command "-" "Replace original configuration"
   copy webkaos.conf {config}
@@ -141,40 +162,33 @@ command "-" "Add self-signed certificate"
   chmod {ssl_dir}/ssl.key 600
   chmod {ssl_dir}/ssl.crt 600
 
+command "webkaos -t" "Validate test configuration"
+  exit 0
+
 command "-" "Clear old log files"
   touch {log_dir}/access.log
   touch {log_dir}/error.log
   truncate {log_dir}/access.log
   truncate {log_dir}/error.log
 
-command "-" "Check brotli module"
-  exist {prefix_dir}/xtra/brotli.conf
-  exist {modules_dir}/ngx_http_brotli_filter_module.so
-  exist {modules_dir}/ngx_http_brotli_static_module.so
-  mode {prefix_dir}/xtra/brotli.conf 644
-  mode {modules_dir}/ngx_http_brotli_filter_module.so 755
-  mode {modules_dir}/ngx_http_brotli_static_module.so 755
-
-command "-" "Check NAXSI module"
-  exist {prefix_dir}/naxsi_core.rules
-  exist {modules_dir}/ngx_http_naxsi_module.so
-  mode {prefix_dir}/naxsi_core.rules 644
-  mode {modules_dir}/ngx_http_naxsi_module.so 755
-
 command "systemctl start {service_name}" "Start service"
   wait-pid {pid_file} 5
   service-works {service_name}
 
 command "-" "Make HTTP requests"
+  http-set-header Accept-Encoding "gzip, deflate"
   http-status GET "http://127.0.0.1" 200
   http-header GET "http://127.0.0.1" server webkaos
+  http-header GET "http://127.0.0.1/mh" server bibop
   http-contains GET "http://127.0.0.1/lua" "LUA MODULE WORKS"
   !empty {log_dir}/access.log
   truncate {log_dir}/access.log
 
 command "-" "Make HTTPS requests"
+  http-set-header Accept-Encoding "gzip, deflate"
   http-status GET "https://127.0.0.1" 200
   http-header GET "https://127.0.0.1" server webkaos
+  http-header GET "https://127.0.0.1/mh" server bibop
   http-contains GET "https://127.0.0.1/lua" "LUA MODULE WORKS"
   !empty {log_dir}/access.log
   truncate {log_dir}/access.log
@@ -199,9 +213,6 @@ command "service {service_name} check" "Broken config check"
 command "service {service_name} reload" "Broken config reload"
   !exit 0
 
-command "service {service_name} restart" "Restart with broken config"
-  !exit 0
-
 command "-" "Restore working configuration"
   copy webkaos.conf {config}
 
@@ -223,15 +234,19 @@ command "systemctl start {service_name}-debug" "Start debug version of service"
   service-works {service_name}-debug
 
 command "-" "Make HTTP requests"
+  http-set-header Accept-Encoding "gzip, deflate"
   http-status GET "http://127.0.0.1" 200
   http-header GET "http://127.0.0.1" server webkaos
+  http-header GET "http://127.0.0.1/mh" server bibop
   http-contains GET "http://127.0.0.1/lua" "LUA MODULE WORKS"
   !empty {log_dir}/access.log
   truncate {log_dir}/access.log
 
 command "-" "Make HTTPS requests"
+  http-set-header Accept-Encoding "gzip, deflate"
   http-status GET "https://127.0.0.1" 200
   http-header GET "https://127.0.0.1" server webkaos
+  http-header GET "https://127.0.0.1/mh" server bibop
   http-contains GET "https://127.0.0.1/lua" "LUA MODULE WORKS"
   !empty {log_dir}/access.log
   truncate {log_dir}/access.log
@@ -244,10 +259,13 @@ command "systemctl stop {service_name}-debug" "Stop debug version of service"
 
 command:teardown "-" "Configuration restore"
   backup-restore {config}
-  backup-restore {modules_config}
 
 command:teardown "-" "DH param cleanup"
   remove {dh_param}
+
+command:teardown "-" "Logs cleanup"
+  truncate {log_dir}/access.log
+  truncate {log_dir}/error.log
 
 command:teardown "-" "Self-signed certificate cleanup"
   remove {ssl_dir}/ssl.key

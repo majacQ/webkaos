@@ -1,23 +1,23 @@
-diff -urN nginx-1.15.4-orig/src/event/ngx_event_openssl.c nginx-1.15.4-boring/src/event/ngx_event_openssl.c
---- nginx-1.15.4-orig/src/event/ngx_event_openssl.c	2018-09-25 18:11:39.000000000 +0300
-+++ nginx-1.15.4-boring/src/event/ngx_event_openssl.c	2018-09-27 14:21:12.000000000 +0300
-@@ -2591,7 +2591,9 @@
- #ifdef SSL_R_NO_SUITABLE_SIGNATURE_ALGORITHM
-             || n == SSL_R_NO_SUITABLE_SIGNATURE_ALGORITHM            /*  118 */
+diff -urN nginx-1.23.4-orig/src/event/ngx_event_openssl.c nginx-1.23.4/src/event/ngx_event_openssl.c
+--- nginx-1.23.4-orig/src/event/ngx_event_openssl.c	2023-03-28 18:01:54.000000000 +0300
++++ nginx-1.23.4/src/event/ngx_event_openssl.c	2023-03-29 13:53:09.000000000 +0300
+@@ -3416,7 +3416,9 @@
+ #ifdef SSL_R_BAD_KEY_UPDATE
+             || n == SSL_R_BAD_KEY_UPDATE                             /*  122 */
  #endif
 +#ifdef SSL_R_BLOCK_CIPHER_PAD_IS_WRONG
              || n == SSL_R_BLOCK_CIPHER_PAD_IS_WRONG                  /*  129 */
 +#endif
-             || n == SSL_R_DIGEST_CHECK_FAILED                        /*  149 */
-             || n == SSL_R_ERROR_IN_RECEIVED_CIPHER_LIST              /*  151 */
-             || n == SSL_R_EXCESSIVE_MESSAGE_SIZE                     /*  152 */
-@@ -2601,7 +2603,9 @@
+             || n == SSL_R_CCS_RECEIVED_EARLY                         /*  133 */
+ #ifdef SSL_R_DECODE_ERROR
+             || n == SSL_R_DECODE_ERROR                               /*  137 */
+@@ -3444,7 +3446,9 @@
  #ifdef SSL_R_NO_CIPHERS_PASSED
              || n == SSL_R_NO_CIPHERS_PASSED                          /*  182 */
  #endif
 +#ifdef SSL_R_NO_CIPHERS_SPECIFIED
              || n == SSL_R_NO_CIPHERS_SPECIFIED                       /*  183 */
 +#endif
-             || n == SSL_R_NO_COMPRESSION_SPECIFIED                   /*  187 */
-             || n == SSL_R_NO_SHARED_CIPHER                           /*  193 */
-             || n == SSL_R_RECORD_LENGTH_MISMATCH                     /*  213 */
+ #ifdef SSL_R_BAD_CIPHER
+             || n == SSL_R_BAD_CIPHER                                 /*  186 */
+ #endif

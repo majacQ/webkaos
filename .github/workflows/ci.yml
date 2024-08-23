@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [master]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   Perfecto:
     name: Perfecto
@@ -13,16 +17,17 @@ jobs:
 
     steps:
       - name: Code checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Login to DockerHub
-        uses: docker/login-action@v1
+        uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Check spec with Perfecto
-        uses: essentialkaos/perfecto-action@v1
+      - name: Check specs with Perfecto
+        uses: essentialkaos/perfecto-action@v2
         with:
           files: webkaos.spec
 
@@ -32,7 +37,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Check scripts with Shellcheck
         uses: essentialkaos/shellcheck-action@v1
@@ -45,7 +50,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Check dockerfiles with Hadolint
         uses: essentialkaos/hadolint-action@v1
@@ -58,52 +63,81 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Test recipes with Bibop
         uses: essentialkaos/bibop-action@v1
         with:
-          recipe: .bibop/webkaos.recipe
+          recipe: .bibop/webkaos.recipe .bibop/webkaos-docker.recipe
           dry-run: true
 
-  DockerEntrypointUnit:
-    name: DockerEntrypointUnit
+  DockerVersionCheck:
+    name: Docker versions check
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Run entrypoint unit tests
-        run: |
-          pushd .docker
-          ./entrypoint_test.sh --verbose
-          popd
+        run: .docker/version_check.sh
 
   DockerBuild:
     name: Docker Build Check
     runs-on: ubuntu-latest
 
-    needs: [Hadolint, Shellcheck, DockerEntrypointUnit]
+    needs: [Hadolint, Shellcheck, DockerVersionCheck]
+
+    env:
+      REGISTRY: ghcr.io
+
+    strategy:
+      matrix:
+        image: [ 'ol8', 'ol8-unprivileged', 'ol9', 'ol9-unprivileged' ]
 
     steps:
+      - name: Check event type
+        run: |
+          if [[ "${{github.event_name}}" != "pull_request" ]] ; then
+            echo "::notice::Event type is not 'pull_request', all job actions will be skipped"
+          fi
+
+          # This step is a hack for needs+if issue with actions
+          # More info about issue: https://github.com/actions/runner/issues/491
+
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+        if: ${{ github.event_name == 'pull_request' }}
+
+      - name: Check versions in Dockerfiles
+        if: ${{ github.event_name == 'pull_request' }}
+        run: ./.docker/version_check.sh
 
       - name: Login to DockerHub
-        uses: docker/login-action@v1
+        uses: docker/login-action@v3
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+        if: ${{ github.event_name == 'pull_request' && env.DOCKERHUB_USERNAME != '' }}
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build CentOS 7 images
-        run: |
-          docker build -f .docker/centos7.docker -t centos7 .
-          docker build -f .docker/centos7-unprivileged.docker -t centos7-unprivileged .
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        if: ${{ github.event_name == 'pull_request' }}
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Measure images size
+      - name: Build Docker image
+        if: ${{ github.event_name == 'pull_request' }}
         run: |
-          image_size=$(docker inspect -f "{{ .Size }}" centos7)
-          printf "\033[1mUncompressed image size (CentOS 7):\033[0m %d (%s)\n" $image_size $(echo "$image_size" | numfmt --to=si)
-          image_size=$(docker inspect -f "{{ .Size }}" centos7-unprivileged)
-          printf "\033[1mUncompressed image size (CentOS 7 Unprivileged):\033[0m %d (%s)\n" $image_size $(echo "$image_size" | numfmt --to=si)
+          docker build --build-arg REGISTRY=${REGISTRY} --build-arg REPOSITORY=kaos-testing -f .docker/${{matrix.image}}.docker -t ${{matrix.image}} .
+
+      - name: Show info about built Docker image
+        uses: essentialkaos/docker-info-action@v1
+        if: ${{ github.event_name == 'pull_request' }}
+        with:
+          image: ${{matrix.image}}
+          show-labels: true

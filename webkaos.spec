@@ -8,129 +8,101 @@
 
 ################################################################################
 
-%define _posixroot        /
-%define _root             /root
-%define _bin              /bin
-%define _sbin             /sbin
-%define _srv              /srv
-%define _home             /home
-%define _lib32            %{_posixroot}lib
-%define _lib64            %{_posixroot}lib64
-%define _libdir32         %{_prefix}%{_lib32}
-%define _libdir64         %{_prefix}%{_lib64}
-%define _logdir           %{_localstatedir}/log
-%define _rundir           %{_localstatedir}/run
-%define _lockdir          %{_localstatedir}/lock/subsys
-%define _cachedir         %{_localstatedir}/cache
-%define _spooldir         %{_localstatedir}/spool
-%define _crondir          %{_sysconfdir}/cron.d
-%define _loc_prefix       %{_prefix}/local
-%define _loc_exec_prefix  %{_loc_prefix}
-%define _loc_bindir       %{_loc_exec_prefix}/bin
-%define _loc_libdir       %{_loc_exec_prefix}/%{_lib}
-%define _loc_libdir32     %{_loc_exec_prefix}/%{_lib32}
-%define _loc_libdir64     %{_loc_exec_prefix}/%{_lib64}
-%define _loc_libexecdir   %{_loc_exec_prefix}/libexec
-%define _loc_sbindir      %{_loc_exec_prefix}/sbin
-%define _loc_bindir       %{_loc_exec_prefix}/bin
-%define _loc_datarootdir  %{_loc_prefix}/share
-%define _loc_includedir   %{_loc_prefix}/include
-%define _rpmstatedir      %{_sharedstatedir}/rpm-state
-%define _pkgconfigdir     %{_libdir}/pkgconfig
+%define _cachedir  %{_localstatedir}/cache
+%define _logdir    %{_localstatedir}/log
+%define _rundir    %{_localstatedir}/run
 
-%define __service         %{_sbin}/service
-%define __chkconfig       %{_sbin}/chkconfig
-%define __useradd         %{_sbindir}/useradd
-%define __groupadd        %{_sbindir}/groupadd
-%define __getent          %{_bindir}/getent
-%define __sysctl          %{_bindir}/systemctl
+%define __service    %{_sbin}/service
+%define __chkconfig  %{_sbin}/chkconfig
+%define __sysctl     %{_bindir}/systemctl
 
 ################################################################################
 
-%define service_user         %{name}
-%define service_group        %{name}
-%define service_name         %{name}
-%define service_home         %{_cachedir}/%{service_name}
+%define service_user   %{name}
+%define service_group  %{name}
+%define service_name   %{name}
+%define service_home   %{_cachedir}/%{service_name}
 
-%define nginx_version        1.21.6
-%define boring_commit        3a667d10e94186fd503966f5638e134fe9fb4080
-%define lua_module_ver       0.10.20
-%define lua_resty_core_ver   0.1.22
-%define lua_resty_lru_ver    0.11
-%define mh_module_ver        0.33
-%define pcre_ver             8.45
-%define zlib_ver             1.2.11
-%define luajit_ver           2.1-20220111
-%define luajit_raw_ver       2.1.0-beta3
-%define brotli_commit        9aec15e2aa6feea2113119ba06460af70ab3ea62
-%define brotli_ver           1.0.9
-%define naxsi_ver            1.3
+%define nginx_version       1.26.2
+%define lua_module_ver      0.10.27
+%define lua_resty_core_ver  0.1.29
+%define lua_resty_lru_ver   0.14
+%define mh_module_ver       0.37
+%define pcre_ver            8.45
+%define zlib_ver            1.3.1
+%define luajit_ver          2.1-20240314
+%define luajit_raw_ver      2.1
+
+# 1. Open https://chromiumdash.appspot.com/releases?platform=Linux and note the latest stable version.
+# 2. Open https://chromium.googlesource.com/chromium/src/+/refs/tags/<version>/DEPS and note <boringssl_revision>.
+%define boring_commit  4fa4804c8ab4521079af62dba5260a99c34b8a29
 
 ################################################################################
 
-Summary:              Superb high performance web server
-Name:                 webkaos
-Version:              %{nginx_version}
-Release:              0%{?dist}
-License:              2-clause BSD-like license
-Group:                System Environment/Daemons
-URL:                  https://kaos.sh/webkaos
+Summary:        Superb high performance web server
+Name:           webkaos
+Version:        %{nginx_version}
+Release:        0%{?dist}
+License:        2-clause BSD-like license
+Group:          System Environment/Daemons
+URL:            https://kaos.sh/webkaos
 
-Source0:              https://nginx.org/download/nginx-%{version}.tar.gz
-Source1:              %{name}.logrotate
-Source2:              %{name}.init
-Source3:              %{name}.sysconfig
-Source4:              %{name}.conf
-Source5:              %{name}.service
-Source6:              %{name}-debug.service
-Source7:              modules.conf
+Source0:        https://nginx.org/download/nginx-%{version}.tar.gz
+Source1:        %{name}.logrotate
+Source2:        %{name}.init
+Source3:        %{name}.sysconfig
+Source4:        %{name}.conf
+Source5:        %{name}.service
+Source6:        %{name}-debug.service
+Source7:        modules.conf
+Source8:        nginx-wrapper
 
-Source20:             ssl.conf
-Source21:             ssl-wildcard.conf
-Source22:             common.conf
-Source23:             bots.conf
-Source24:             brotli.conf
+Source20:       ssl.conf
+Source21:       ssl-wildcard.conf
+Source22:       common.conf
+Source23:       bots.conf
+Source25:       cloudflare-ips.conf
 
-Source30:             %{name}-index.html
-Source31:             default.key
-Source32:             default.crt
+Source30:       %{name}-index.html
+Source31:       default.key
+Source32:       default.crt
 
-Source50:             https://github.com/openresty/lua-nginx-module/archive/v%{lua_module_ver}.tar.gz
-Source51:             https://boringssl.googlesource.com/boringssl/+archive/%{boring_commit}.tar.gz
-Source52:             https://github.com/openresty/headers-more-nginx-module/archive/v%{mh_module_ver}.tar.gz
-Source53:             https://downloads.sourceforge.net/project/pcre/pcre/%{pcre_ver}/pcre-%{pcre_ver}.tar.gz
-Source54:             https://zlib.net/zlib-%{zlib_ver}.tar.gz
-Source55:             https://github.com/openresty/luajit2/archive/v%{luajit_ver}.tar.gz
-Source56:             https://github.com/google/ngx_brotli/archive/%{brotli_commit}.tar.gz
-Source57:             https://github.com/google/brotli/archive/v%{brotli_ver}.tar.gz
-Source58:             https://github.com/nbs-system/naxsi/archive/%{naxsi_ver}.tar.gz
-Source59:             https://github.com/openresty/lua-resty-core/archive/v%{lua_resty_core_ver}.tar.gz
-Source60:             https://github.com/openresty/lua-resty-lrucache/archive/v%{lua_resty_lru_ver}.tar.gz
+Source50:       https://github.com/openresty/lua-nginx-module/archive/v%{lua_module_ver}.tar.gz
+Source51:       https://boringssl.googlesource.com/boringssl/+archive/%{boring_commit}.tar.gz
+Source52:       https://github.com/openresty/headers-more-nginx-module/archive/v%{mh_module_ver}.tar.gz
+Source53:       https://downloads.sourceforge.net/project/pcre/pcre/%{pcre_ver}/pcre-%{pcre_ver}.tar.gz
+Source54:       https://zlib.net/zlib-%{zlib_ver}.tar.gz
+Source55:       https://github.com/openresty/luajit2/archive/v%{luajit_ver}.tar.gz
+Source59:       https://github.com/openresty/lua-resty-core/archive/v%{lua_resty_core_ver}.tar.gz
+Source60:       https://github.com/openresty/lua-resty-lrucache/archive/v%{lua_resty_lru_ver}.tar.gz
 
-Source100:            checksum.sha512
+Source100:      checksum.sha512
 
-Patch0:               %{name}.patch
-Patch1:               mime.patch
-# https://github.com/cloudflare/sslconfig/blob/master/patches/nginx__1.11.5_dynamic_tls_records.patch
-Patch2:               %{name}-dynamic-tls-records.patch
-# https://github.com/ajhaydock/BoringNginx/blob/master/patches
-Patch3:               boringssl.patch
-Patch5:               boringssl-tls13-support.patch
-Patch8:               boringssl-urand-test-disable.patch
+Patch0:         %{name}.patch
+Patch1:         mime.patch
+                # https://github.com/cloudflare/sslconfig/blob/master/patches/nginx__1.11.5_dynamic_tls_records.patch
+Patch2:         %{name}-dynamic-tls-records.patch
+                # https://github.com/ajhaydock/BoringNginx/blob/master/patches
+Patch3:         boringssl.patch
+Patch5:         boringssl-tls13-support.patch
 
-BuildRoot:            %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
-BuildRequires:        make perl cmake3 golang
-BuildRequires:        devtoolset-7-gcc-c++ devtoolset-7-binutils
+BuildRequires:  make perl golang cmake
+%if 0%{?rhel} <= 8
+BuildRequires:  gcc-toolset-11-gcc gcc-toolset-11-gcc-c++ gcc-toolset-11-binutils
+%else
+BuildRequires:  gcc-c++
+%endif
 
-Requires:             initscripts >= 8.36 kaosv >= 2.16
-Requires:             gd libXpm libxslt
+Requires:       initscripts >= 8.36 kaosv >= 2.17
+Requires:       gd libXpm libxslt
 
-Requires:             systemd
-Requires(pre):        shadow-utils
+Requires:       systemd
+Requires(pre):  shadow-utils
 
-Provides:             %{name} = %{version}-%{release}
-Provides:             webserver = %{version}-%{release}
+Provides:       %{name} = %{version}-%{release}
+Provides:       webserver = %{version}-%{release}
 
 ################################################################################
 
@@ -142,9 +114,9 @@ optimizations and improvements.
 
 %package debug
 
-Summary:           Debug version of webkaos
-Group:             System Environment/Daemons
-Requires:          %{name} >= %{version}
+Summary:   Debug version of webkaos
+Group:     System Environment/Daemons
+Requires:  %{name} >= %{version}
 
 %description debug
 Not stripped version of webkaos with the debugging log support
@@ -153,44 +125,16 @@ Not stripped version of webkaos with the debugging log support
 
 %package nginx
 
-Summary:           Links for nginx compatibility
-Group:             System Environment/Daemons
-Requires:          %{name} >= %{version}
+Summary:    Links for nginx compatibility
+Group:      System Environment/Daemons
+Requires:   %{name} >= %{version}
 
-Conflicts:         nginx nginx-kaos tengine openresty
+Conflicts:  nginx nginx-kaos tengine openresty
 
-BuildArch:         noarch
+BuildArch:  noarch
 
 %description nginx
 Links for nginx compatibility.
-
-################################################################################
-
-%package module-brotli
-
-Summary:           Module for Brotli compression
-Version:           0.1.5
-Release:           9%{?dist}
-
-Group:             System Environment/Daemons
-Requires:          %{name} = %{nginx_version}
-
-%description module-brotli
-Module for Brotli compression.
-
-################################################################################
-
-%package module-naxsi
-
-Summary:           High performance, low rules maintenance WAF
-Version:           %{naxsi_ver}
-Release:           8%{?dist}
-
-Group:             System Environment/Daemons
-Requires:          %{name} = %{nginx_version}
-
-%description module-naxsi
-NAXSI is an open-source, high performance, low rules maintenance WAF.
 
 ################################################################################
 
@@ -207,9 +151,6 @@ tar xzvf %{SOURCE52}
 tar xzvf %{SOURCE53}
 tar xzvf %{SOURCE54}
 tar xzvf %{SOURCE55}
-tar xzvf %{SOURCE56}
-tar xzvf %{SOURCE57}
-tar xzvf %{SOURCE58}
 tar xzvf %{SOURCE59}
 tar xzvf %{SOURCE60}
 
@@ -220,7 +161,6 @@ tar xzvf %{SOURCE60}
 
 pushd boringssl
 %patch5 -p1
-%patch8 -p1
 popd
 
 %build
@@ -232,10 +172,14 @@ mv LICENSE    NGINX-LICENSE
 mv README     NGINX-README
 
 mv lua-nginx-module-%{lua_module_ver}/README.markdown ./LUA-MODULE-README.markdown
+mv lua-resty-core-%{lua_resty_core_ver}/README.markdown ./LUA-RESTY-CORE-README.markdown
+mv lua-resty-lrucache-%{lua_resty_lru_ver}/README.markdown ./LUA-RESTY-LRU-README.markdown
 mv headers-more-nginx-module-%{mh_module_ver}/README.markdown ./HEADERS-MORE-MODULE-README.markdown
 
-# Use gcc and gcc-c++ from DevToolSet 7
-export PATH="/opt/rh/devtoolset-7/root/usr/bin:$PATH"
+%if 0%{?rhel} <= 8
+# Use gcc and gcc-c++ from DevToolSet 11
+export PATH="/opt/rh/gcc-toolset-11/root/usr/bin:$PATH"
+%endif
 
 # LuaJIT2 Build ################################################################
 
@@ -255,7 +199,7 @@ export LUAJIT_INC="$LUAJIT2_DIR/build%{_datadir}/%{name}/luajit/include/luajit-2
 mkdir boringssl/build
 
 pushd boringssl/build &> /dev/null
-  cmake3 ../
+  cmake3 -DCMAKE_EXE_LINKER_FLAGS="-Wl,--no-as-needed -ldl -lstdc++" ../
   %{__make} %{?_smp_mflags}
 popd
 
@@ -267,15 +211,9 @@ popd
 
 cp boringssl/build/crypto/libcrypto.a boringssl/build/ssl/libssl.a boringssl/.openssl/lib
 
-# Brotli Source Copy ###########################################################
-
-pushd ngx_brotli-%{brotli_commit}
-  rm -rf deps/brotli
-  mv ../brotli-%{brotli_ver} deps/brotli
-popd
-
 ################################################################################
 
+# perfecto:ignore
 ./configure \
     --prefix=%{_sysconfdir}/%{name} \
     --sbin-path=%{_sbindir}/%{name} \
@@ -323,7 +261,7 @@ popd
     --add-module=lua-nginx-module-%{lua_module_ver} \
     --add-module=headers-more-nginx-module-%{mh_module_ver} \
     --with-cc-opt="-g -O2 -fPIE -fstack-protector-all -DTCP_FASTOPEN=23 -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security -I ../boringssl/.openssl/include/" \
-    --with-ld-opt="-Wl,-Bsymbolic-functions -Wl,-z,relro -L ../boringssl/.openssl/lib -L ../luajit2-%{luajit_ver}/lib -Wl,-rpath -Wl,%{_datadir}/%{name}/luajit/lib" \
+    --with-ld-opt="-Wl,-Bsymbolic-functions -Wl,-z,relro -L ../boringssl/.openssl/lib -L ../luajit2-%{luajit_ver}/lib -Wl,-rpath -Wl,%{_datadir}/%{name}/luajit/lib -ldl -lstdc++" \
     --with-compat \
     $*
 
@@ -332,41 +270,10 @@ touch boringssl/.openssl/include/openssl/ssl.h
 
 %{__make} %{?_smp_mflags}
 
-./configure \
-    --prefix=%{_sysconfdir}/%{name} \
-    --sbin-path=%{_sbindir}/%{name} \
-    --modules-path=%{_libdir}/%{name}/modules \
-    --conf-path=%{_sysconfdir}/%{name}/%{name}.conf \
-    --error-log-path=%{_logdir}/%{name}/error.log \
-    --http-log-path=%{_logdir}/%{name}/access.log \
-    --pid-path=%{_rundir}/%{name}.pid \
-    --lock-path=%{_rundir}/%{name}.lock \
-    --http-client-body-temp-path=%{service_home}/client_temp \
-    --http-proxy-temp-path=%{service_home}/proxy_temp \
-    --http-fastcgi-temp-path=%{service_home}/fastcgi_temp \
-    --http-uwsgi-temp-path=%{service_home}/uwsgi_temp \
-    --http-scgi-temp-path=%{service_home}/scgi_temp \
-    --user=%{service_user} \
-    --group=%{service_group} \
-    --with-zlib=zlib-%{zlib_ver} \
-    --with-pcre-jit \
-    --with-pcre=pcre-%{pcre_ver} \
-    --with-openssl=boringssl \
-    --add-dynamic-module=ngx_brotli-%{brotli_commit} \
-    --add-dynamic-module=naxsi-%{naxsi_ver}/naxsi_src \
-    --with-cc-opt="-I ../boringssl/.openssl/include/" \
-    --with-ld-opt="-L ../boringssl/.openssl/lib -L ../luajit2-%{luajit_ver}/lib" \
-    --with-compat \
-    $*
-
-# Fix "Error 127" during build with BoringSSL
-touch boringssl/.openssl/include/openssl/ssl.h
-
-%{__make} modules
-
 mv %{_builddir}/nginx-%{nginx_version}/objs/nginx \
         %{_builddir}/nginx-%{nginx_version}/objs/%{name}.debug
 
+# perfecto:ignore
 ./configure \
     --prefix=%{_sysconfdir}/%{name} \
     --sbin-path=%{_sbindir}/%{name} \
@@ -412,7 +319,7 @@ mv %{_builddir}/nginx-%{nginx_version}/objs/nginx \
     --add-module=lua-nginx-module-%{lua_module_ver} \
     --add-module=headers-more-nginx-module-%{mh_module_ver} \
     --with-cc-opt="-g -O2 -fPIE -fstack-protector-all -DTCP_FASTOPEN=23 -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security -I ../boringssl/.openssl/include/" \
-    --with-ld-opt="-Wl,-Bsymbolic-functions -Wl,-z,relro -L ../boringssl/.openssl/lib -L ../luajit2-%{luajit_ver}/lib -Wl,-rpath -Wl,%{_datadir}/%{name}/luajit/lib" \
+    --with-ld-opt="-Wl,-Bsymbolic-functions -Wl,-z,relro -L ../boringssl/.openssl/lib -L ../luajit2-%{luajit_ver}/lib -Wl,-rpath -Wl,%{_datadir}/%{name}/luajit/lib -ldl -lstdc++" \
     --with-compat \
     $*
 
@@ -493,6 +400,8 @@ install -pm 644 %{SOURCE22} \
                 %{buildroot}%{_sysconfdir}/%{name}/xtra/
 install -pm 644 %{SOURCE23} \
                 %{buildroot}%{_sysconfdir}/%{name}/xtra/
+install -pm 644 %{SOURCE25} \
+                %{buildroot}%{_sysconfdir}/%{name}/xtra/
 
 install -dm 755 %{buildroot}%{_sysconfdir}/sysconfig
 
@@ -526,23 +435,12 @@ cp -rp lua-resty-lrucache-%{lua_resty_lru_ver}/lib/resty/* \
 
 find %{buildroot}%{_datadir}/%{name}/luajit/share/luajit-%{luajit_raw_ver}/ -name '*.md' -delete
 
-# Modules installation
-cp -rp %{_builddir}/nginx-%{nginx_version}/objs/*.so \
-       %{buildroot}%{_datadir}/%{name}/modules/
+# Create links and scripts for compatibility with nginx
+install -pm 755 %{SOURCE8} %{buildroot}%{_sbindir}/nginx
 
-# Modules configs installation
-install -pm 644 %{SOURCE24} \
-                %{buildroot}%{_sysconfdir}/%{name}/xtra/
-
-# NAXSI rules installation
-install -pm 644 %{_builddir}/nginx-%{nginx_version}/naxsi-%{naxsi_ver}/naxsi_config/naxsi_core.rules \
-                %{buildroot}%{_sysconfdir}/%{name}/
-
-# Create links for compatibility with nginx
 ln -sf %{_sysconfdir}/%{name}/ %{buildroot}%{_sysconfdir}/nginx
 ln -sf %{_sysconfdir}/%{name}/%{name}.conf %{buildroot}%{_sysconfdir}/%{name}/nginx.conf
 ln -sf %{_logdir}/%{name}/ %{buildroot}%{_logdir}/nginx
-ln -sf %{_sbindir}/%{name} %{buildroot}%{_sbindir}/nginx
 ln -sf %{_initrddir}/%{service_name} %{buildroot}%{_initrddir}/nginx
 
 ln -sf %{_unitdir}/%{name}.service %{buildroot}%{_unitdir}/nginx.service
@@ -590,7 +488,7 @@ fi
 
 %postun
 if [[ $1 -ge 1 ]] ; then
-%{__sysctl} daemon-reload &>/dev/null || :
+  %{__sysctl} daemon-reload &>/dev/null || :
 fi
 
 %clean
@@ -611,10 +509,11 @@ rm -rf %{buildroot}
 
 %config(noreplace) %{_sysconfdir}/%{name}/%{name}.conf
 %config(noreplace) %{_sysconfdir}/%{name}/modules.conf
-%config %{_sysconfdir}/%{name}/xtra/common.conf
-%config %{_sysconfdir}/%{name}/xtra/ssl.conf
-%config %{_sysconfdir}/%{name}/xtra/ssl-wildcard.conf
-%config %{_sysconfdir}/%{name}/xtra/bots.conf
+%config(noreplace) %{_sysconfdir}/%{name}/xtra/bots.conf
+%config(noreplace) %{_sysconfdir}/%{name}/xtra/cloudflare-ips.conf
+%config(noreplace) %{_sysconfdir}/%{name}/xtra/common.conf
+%config(noreplace) %{_sysconfdir}/%{name}/xtra/ssl-wildcard.conf
+%config(noreplace) %{_sysconfdir}/%{name}/xtra/ssl.conf
 
 %config(noreplace) %{_sysconfdir}/%{name}/ssl/default.key
 %config(noreplace) %{_sysconfdir}/%{name}/ssl/default.crt
@@ -663,20 +562,75 @@ rm -rf %{buildroot}
 %{_unitdir}/nginx.service
 %{_unitdir}/nginx-debug.service
 
-%files module-brotli
-%defattr(-,root,root)
-%config(noreplace) %{_sysconfdir}/%{name}/xtra/brotli.conf
-%{_datadir}/%{name}/modules/ngx_http_brotli_filter_module.so
-%{_datadir}/%{name}/modules/ngx_http_brotli_static_module.so
-
-%files module-naxsi
-%defattr(-,root,root)
-%config(noreplace) %{_sysconfdir}/%{name}/naxsi_core.rules
-%{_datadir}/%{name}/modules/ngx_http_naxsi_module.so
-
 ################################################################################
 
 %changelog
+* Thu Aug 15 2024 Anton Novojilov <andy@essentialkaos.com> - 1.26.2-0
+- Nginx updated to 1.26.2 with fixes for CVE-2024-7347
+- More Headers module updated to 0.37
+- lua-nginx-module updated to 0.10.27
+- lua-resty-lru updated to 0.14
+- lua-resty-core updated to 0.1.29
+
+* Fri Jun 14 2024 Anton Novojilov <andy@essentialkaos.com> - 1.26.1-0
+- Nginx updated to 1.26.1
+
+* Sun Jun 02 2024 Anton Novojilov <andy@essentialkaos.com> - 1.26.0-2
+- ngx_brotli module removed due to serious problems and lack of support
+
+* Fri May 31 2024 Anton Novojilov <andy@essentialkaos.com> - 1.26.0-1
+- Brotli updated to the latest commit to fix a bug that caused workers to
+  shut down
+
+* Fri May 03 2024 Anton Novojilov <andy@essentialkaos.com> - 1.26.0-0
+- Nginx updated to 1.26.0
+- BoringSSL updated to the latest stable version for Chromium
+- Zlib updated to 1.3.1
+- Brotli updated to the latest version
+- LuaJIT updated to 2.1-20240314
+- lua-nginx-module updated to 0.10.26
+- lua-resty-core updated to 0.1.28
+- NAXSI module removed due to discontinued development
+- End of support for CentOS 7
+
+* Wed Jun 21 2023 Anton Novojilov <andy@essentialkaos.com> - 1.24.0-0
+- Nginx updated to 1.24.0 (mainline → stable)
+- BoringSSL updated to the latest stable version for Chromium
+
+* Wed Mar 29 2023 Anton Novojilov <andy@essentialkaos.com> - 1.23.4-0
+- Nginx updated to 1.23.4
+- lua-nginx-module updated to 0.10.24
+- lua-resty-core updated to 0.1.26
+- BoringSSL updated to the latest stable version for Chromium
+
+* Thu Dec 01 2022 Anton Novojilov <andy@essentialkaos.com> - 1.23.3-0
+- Nginx updated to 1.23.3
+- zlib updated to 1.2.13 with fixes for CVE-2022-37434
+- BoringSSL updated to the latest stable version for Chromium
+- ngx_brotli updated to the latest commit
+- brotli updated to the latest commit
+
+* Sat Oct 22 2022 Anton Novojilov <andy@essentialkaos.com> - 1.23.2-0
+- Nginx updated to 1.23.2 with fixes for CVE-2022-41741, CVE-2022-41742
+- BoringSSL updated to the latest stable version for Chromium
+- LuaJIT updated to 2.1-20220915
+- lua-resty-core updated to 0.1.24
+- lua-nginx-module updated to 0.10.22
+- Added extra config with Cloudflare IPs
+
+* Tue Aug 02 2022 Anton Novojilov <andy@essentialkaos.com> - 1.23.1-0
+- Nginx updated to 1.23.1
+- More Headers module updated to 0.34
+
+* Mon Jul 04 2022 Anton Novojilov <andy@essentialkaos.com> - 1.23.0-0
+- Nginx updated to 1.23.0
+- BoringSSL updated to the latest stable version
+- LuaJIT updated to 2.1-20220411
+- lua-nginx-module updated to 0.10.21
+- lua-resty-core updated to 0.1.23
+- lua-resty-lru updated to 0.13
+- Using GCC 9 for build
+
 * Thu Jan 27 2022 Anton Novojilov <andy@essentialkaos.com> - 1.21.6-0
 - Nginx updated to 1.21.6
 - LuaJIT updated to 2.1-20220111
@@ -1212,7 +1166,7 @@ rm -rf %{buildroot}
 * Fri Aug 08 2014 Anton Novojilov <andy@essentialkaos.com> - 1.7.4-0
 - OpenSSL updated to 1.0.1i
 - Nginx updated to 1.7.4
-- Fixed posible bug with error message output
+- Fixed possible bug with error message output
 
 * Mon Aug 04 2014 Anton Novojilov <andy@essentialkaos.com> - 1.7.3-1
 - Added compatibility with nginx init
